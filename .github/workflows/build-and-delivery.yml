@@ -11,26 +11,30 @@ jobs:
   cd:
     runs-on: ubuntu-latest
     steps:
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: actions/checkout@v4
 
       - name: Create Dockerfile
-        working-directory: docker-build
         run: |
-          cat <<EOF > Dockerfile
+          echo "Current directory: $(pwd)"
+          echo "Creating Dockerfile at: ${{ github.workspace }}/Dockerfile"
+          cat <<EOF > "${{ github.workspace }}/Dockerfile"
           FROM python:3.12-slim
           WORKDIR /app
           COPY . .
           RUN pip install --no-cache-dir -r requirements.txt
           CMD ["python", "main.py"]
           EOF
-          cat Dockerfile
+          echo "Dockerfile content:"
+          cat "${{ github.workspace }}/Dockerfile"
+          echo "Directory contents:"
+          ls -la "${{ github.workspace }}"
 
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ vars.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
-
+      # Шаг 2: Сборка с абсолютными путями
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -38,3 +42,9 @@ jobs:
           file: ${{ github.workspace }}/Dockerfile
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Шаг 3: Очистка
+      - name: Cleanup
+        run: rm -f "${{ github.workspace }}/Dockerfile"
