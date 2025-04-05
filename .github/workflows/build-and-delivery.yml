@@ -4,8 +4,8 @@ on:
   workflow_run:
     workflows: ["Test Python App"]
     branches: [main]
-    types:
-      - completed
+    types: [completed]
+  workflow_dispatch:
 
 jobs:
   cd:
@@ -13,20 +13,14 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     
     steps:
-    - uses: actions/checkout@v4
-      with:
-          path: 'source'
-    - name: Login to Docker Hub
-      uses: docker/login-action@v3
-      with:
-        username: ${{ vars.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    
-    - name: Create Dockerfile
-      run: |
-          echo "Current directory: $(pwd)"
-          echo "Creating Dockerfile at: ${{ github.workspace }}/Dockerfile"
-          cat <<EOF > "${{ github.workspace }}/Dockerfile"
+      - uses: actions/checkout@v4
+        with:
+          path: 'source'  # Явно указываем путь для checkout
+
+      - name: Create Dockerfile
+        working-directory: ${{ github.workspace }}/source
+        run: |
+          cat <<EOF > Dockerfile
           FROM python:3.12-slim
           WORKDIR /app
           COPY . .
@@ -34,17 +28,21 @@ jobs:
           CMD ["python", "main.py"]
           EOF
           echo "Dockerfile content:"
-          cat "${{ github.workspace }}/Dockerfile"
+          cat Dockerfile
           echo "Directory contents:"
-          ls -la "${{ github.workspace }}"
+          ls -la
 
-      # Шаг 2: Сборка с абсолютными путями
-    - name: Build and push
-      uses: docker/build-push-action@v6
-      with:
-        context: ${{ github.workspace }}
-        file: ${{ github.workspace }}/Dockerfile
-        push: true
-        tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ github.workspace }}/source  # Используем локальный контекст
+          file: ${{ github.workspace }}/source/Dockerfile
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
+          no-cache: true  # Отключаем кэш для чистого билда
