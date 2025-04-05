@@ -11,6 +11,8 @@ jobs:
   cd:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    env:
+      BUILD_CONTEXT: ${{ github.workspace }}/docker-build
     
     steps:
       - name: Login to Docker Hub
@@ -18,14 +20,15 @@ jobs:
         with:
           username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - uses: actions/checkout@v4
         with:
-          path: 'docker-build-context'
+          path: ${{ env.BUILD_CONTEXT }}
 
-      - name: Prepare build context
-        working-directory: ${{ github.workspace }}/docker-build-context
+      - name: Create Dockerfile
+        working-directory: ${{ env.BUILD_CONTEXT }}
         run: |
-          cat <<EOF > Dockerfile
+          cat <<'EOF' > Dockerfile
           FROM python:3.12-slim
           WORKDIR /app
           COPY . .
@@ -33,19 +36,22 @@ jobs:
           CMD ["python", "main.py"]
           EOF
           
-          echo "=== Dockerfile content ==="
-          cat Dockerfile
-          echo "=== Directory structure ==="
+          echo "=== Verification ==="
+          echo "Dockerfile path: $(pwd)/Dockerfile"
+          echo "Dockerfile exists: $(test -f Dockerfile && echo 'YES' || echo 'NO')"
+          echo "Directory contents:"
           ls -la
-          echo "=== Requirements.txt ==="
+          echo "Requirements:"
           cat requirements.txt || echo "requirements.txt not found"
 
-      # Шаг 3: Сборка с явным указанием локального контекста
+      # Шаг 3: Сборка с явным локальным контекстом
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ${{ github.workspace }}/docker-build-context
-          file: ${{ github.workspace }}/docker-build-context/Dockerfile
+          context: ${{ env.BUILD_CONTEXT }}
+          file: ${{ env.BUILD_CONTEXT }}/Dockerfile
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
           no-cache: true
+          build-args: |
+            BUILD_CONTEXT=${{ env.BUILD_CONTEXT }}
