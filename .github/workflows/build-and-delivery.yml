@@ -4,9 +4,8 @@ on:
   workflow_run:
     workflows: ["Test Python App"]
     branches: [main]
-    types:
-      - completed
-
+    types: [completed]
+  workflow_dispatch:
 jobs:
   cd:
     runs-on: ubuntu-latest
