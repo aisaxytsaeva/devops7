@@ -13,13 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Prepare build context
-        run: |
-          mkdir -p docker-build
-          cp -r * docker-build/ || true
-          cd docker-build
-          ls -la
-
       - name: Create Dockerfile
         working-directory: docker-build
         run: |
@@ -41,7 +34,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: docker-build
-          file: docker-build/Dockerfile
+          context: ${{ github.workspace }}
+          file: ${{ github.workspace }}/Dockerfile
           push: true
           tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
