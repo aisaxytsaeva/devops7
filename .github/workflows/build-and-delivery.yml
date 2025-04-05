@@ -24,6 +24,16 @@ jobs:
         ls -la
         echo "Dockerfile content:"
         cat Dockerfile || echo "Dockerfile not found"
+    
+    - name: Create Dockerfile
+      run: |
+       cat <<EOF > Dockerfile
+       FROM python:3.12-slim
+       WORKDIR /app
+       COPY . .
+       RUN pip install --no-cache-dir -r requirements.txt
+       CMD ["python", "main.py"]
+       EOF
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v6
