@@ -26,24 +26,8 @@ jobs:
           path: docker-build
           ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # Ваш SSH-ключ
 
-      # 2. Создаем Dockerfile в явно указанной папке
-      - name: Prepare Dockerfile
-        working-directory: ${{ github.workspace }}/docker-build
-        run: |
-          cat <<EOF > Dockerfile
-          FROM python:3.12-slim
-          WORKDIR /app
-          COPY . .
-          RUN pip install --no-cache-dir -r requirements.txt
-          CMD ["python", "main.py"]
-          EOF
-          echo "=== Проверка ==="
-          ls -la
-          cat Dockerfile
-
-      # 3. Сборка через чистый Docker CLI (без buildx)
-      - name: Build and push
-        run: |
-          cd ${{ github.workspace }}/docker-build
-          docker build . -t westsunshine/my-app:latest
-          docker push westsunshine/my-app:latest
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          push: true
+          tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
