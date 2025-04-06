@@ -23,35 +23,27 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          path: ${{ env.BUILD_CONTEXT }}
+          path: docker-build
+          ssh-key: ${{ secrets.SSH_PRIVATE_KEY }}  # Ваш SSH-ключ
 
-      - name: Create Dockerfile
-        working-directory: ${{ env.BUILD_CONTEXT }}
+      # 2. Создаем Dockerfile в явно указанной папке
+      - name: Prepare Dockerfile
+        working-directory: ${{ github.workspace }}/docker-build
         run: |
-          cat <<'EOF' > Dockerfile
+          cat <<EOF > Dockerfile
           FROM python:3.12-slim
           WORKDIR /app
           COPY . .
           RUN pip install --no-cache-dir -r requirements.txt
           CMD ["python", "main.py"]
           EOF
-          
-          echo "=== Verification ==="
-          echo "Dockerfile path: $(pwd)/Dockerfile"
-          echo "Dockerfile exists: $(test -f Dockerfile && echo 'YES' || echo 'NO')"
-          echo "Directory contents:"
+          echo "=== Проверка ==="
           ls -la
-          echo "Requirements:"
-          cat requirements.txt || echo "requirements.txt not found"
+          cat Dockerfile
 
-      # Шаг 3: Сборка с явным локальным контекстом
+      # 3. Сборка через чистый Docker CLI (без buildx)
       - name: Build and push
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ env.BUILD_CONTEXT }}
-          file: ${{ env.BUILD_CONTEXT }}/Dockerfile
-          push: true
-          tags: ${{ vars.DOCKERHUB_USERNAME }}/my-app:latest
-          no-cache: true
-          build-args: |
-            BUILD_CONTEXT=${{ env.BUILD_CONTEXT }}
+        run: |
+          cd ${{ github.workspace }}/docker-build
+          docker build . -t westsunshine/my-app:latest
+          docker push westsunshine/my-app:latest
